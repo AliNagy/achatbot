@@ -1,6 +1,8 @@
 const speech = require('@google-cloud/speech');
 const client = new speech.SpeechClient();
 
+const fetch = require('node-fetch');
+
 const app = require('express')()
 const server = require('http').Server(app)
 const io = require('socket.io')(server)
@@ -36,17 +38,17 @@ app.get('/', (req, res) => {
 
 io.on('connection', function (socket) {
     console.log('Connection made!')
-
     function getReply(text, textToSpeech = true) {
-        fetch('/api', {
+        fetch('http://localhost:5000', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'text/plain'
             },
-            body: JSON.stringify({ text, textToSpeech })
-        }).then(response => response.json())
+            body: text
+        }).then(response => response.text())
             .then((data) => {
-                socket.emit('reply', { text: data.text, audio: data.audio })
+                console.log(data)
+                socket.emit('reply', data)
             }).catch(err => console.error(err))
     }
 
