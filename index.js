@@ -56,7 +56,8 @@ io.on('connection', function (socket) {
         .streamingRecognize(request)
         .on('error', console.error)
         .on('data', (data) => {
-            socket.emit('reply', { text: getReply(data.results[0].alternatives[0]), audio: null })
+            socket.emit('speechToText', { text: data.results[0].alternatives[0].transcript, audio: null })
+            socket.emit('reply', { text: getReply(data.results[0].alternatives[0].transcript), audio: null })
         });
 
     const audioStream = new streamBuffers.ReadableStreamBuffer({
@@ -73,6 +74,7 @@ io.on('connection', function (socket) {
     })
 
     socket.on('audio', function (data) {
+        console.log('RECIEVED AUDIOOO')
         audioStream.put(data)
     })
 
