@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "set GOOGLE_APPLICATION_CREDENTIALS=creds/googleCloud.json && node ."
   },
   "author": "",
   "license": "ISC",

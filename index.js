@@ -7,7 +7,9 @@ const app = require('express')()
 const server = require('http').Server(app)
 const io = require('socket.io')(server)
 
-server.listen(80)
+var port = process.env.PORT || 3000;
+
+server.listen(port)
 
 console.log('Server up!')
 
@@ -33,22 +35,28 @@ const request = {
 }
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/www/index.html')
+    res.sendFile(__dirname + '/www/index.html') //???
 })
 
 io.on('connection', function (socket) {
     console.log('Connection made!')
-    function getReply(text, textToSpeech = true) {
+    function getReply(text, textToSpeech = false) {
         fetch('http://localhost:5000', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain'
-            },
             body: text
         }).then(response => response.text())
             .then((data) => {
-                console.log(data)
                 socket.emit('reply', data)
+                if(textToSpeech){
+                    console.log(data)
+                    fetch('http://localhost:5000/tts', {
+                        method: 'POST',
+                        body: data
+                    }).then(response => response.arrayBuffer()).then((data)=>{
+                        console.log(data)
+                        socket.emit('reply-tts', data)
+                    })
+                }
             }).catch(err => console.error(err))
     }
 
@@ -56,13 +64,14 @@ io.on('connection', function (socket) {
         .streamingRecognize(request)
         .on('error', console.error)
         .on('data', (data) => {
-            socket.emit('speechToText', { text: data.results[0].alternatives[0].transcript, audio: null })
-            socket.emit('reply', { text: getReply(data.results[0].alternatives[0].transcript), audio: null })
+            console.log(data.results[0].alternatives[0].transcript)
+            socket.emit('speechToText', data.results[0].alternatives[0].transcript)
+            //getReply(data.results[0].alternatives[0].transcript)
         });
 
     const audioStream = new streamBuffers.ReadableStreamBuffer({
         frequency: 10,
-        chunkSize: 2048
+        chunkSize: 1024
     })
 
     socket.on('audio-start', function () {
@@ -74,7 +83,7 @@ io.on('connection', function (socket) {
     })
 
     socket.on('audio', function (data) {
-        console.log('RECIEVED AUDIOOO')
+        console.log("Recieved audio.")
         audioStream.put(data)
     })
 
