@@ -59,6 +59,7 @@ io.on('connection', function (socket) {
     }
 
     async function getSTT(data) {
+        try {
         const [response] = await client.recognize({
             audio: { content: data.toString('base64') },
             config: config
@@ -67,6 +68,10 @@ io.on('connection', function (socket) {
             .map(result => result.alternatives[0].transcript)
             .join('\n');
         socket.emit('speechToText', transcription)
+        } catch(err) {
+            console.log(`${err.code}: ${err.message}`)
+            socket.emit('speechToText', false)
+        }
     }
 
     const recognizeStream = client
