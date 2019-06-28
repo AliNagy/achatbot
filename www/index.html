@@ -3,16 +3,17 @@
 	type="text/css">
 	<link href="https://cdn.jsdelivr.net/npm/animate.css@^3.5.2/animate.min.css" rel="stylesheet">
 	<link href="https://cdn.jsdelivr.net/npm/quasar@^1.0.0-rc.5/dist/quasar.min.css" rel="stylesheet" type="text/css">
+	<script src="https://kit.fontawesome.com/21f2323bbd.js"></script>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
 </head>
 
 <body>
 	<div id="q-app">
 		<q-layout view="hhh lpR fFf">
-			<q-header elevated class="bg-primary text-white">
+			<q-header elevated class="bg-light-blue-6  text-white">
 				<q-toolbar>
 					<q-toolbar-title>
-						Bot Mark
+						Mark
 					</q-toolbar-title>
 					<q-input class="q-pr-md" color="black" dense bg-color="white" filled :disable="isConnected"
 					v-model="serverIp" label="Server IP"></q-input>
@@ -26,10 +27,10 @@
 						<q-card class="col-12 col-md-6">
 							<q-card-section style="height: 80vh">
 								<q-card flat bordered style="height:100%" class="q-pa-md scroll" id="chatContainer">
-									<q-chat-message v-for="msg in messages" :text="msg.text" :sent="msg.sent" />
+									<q-chat-message :text-color="msg.background?'white':'black'" :bg-color="msg.background?msg.background:''" v-for="msg in messages" :text="msg.text" :sent="msg.sent"/>
 								</q-chat-message>
 								<q-spinner-comment transition-show="scale" class="flip-horizontal" size="4em"
-								color="teal" v-if="awaitReply"></q-spinner-comment>
+								color="light-blue-8" v-if="awaitReply"></q-spinner-comment>
 							</q-card>
 						</q-card-section>
 						<q-card-section>
@@ -112,7 +113,8 @@
 					this.awaitReply = false
 					this.messages.push({
 						text: [data],
-						sent: false
+						sent: false,
+						background: "light-blue-8"
 					})
 					let n = document.getElementById('chatContainer')
 					n.scrollTop = n.scrollHeight;
@@ -164,31 +166,31 @@
 					}
 					this.audioContext = new AudioContext
 					navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-							.then(this.handleSuccess) 
-							.catch(err => console.log(err.message))
-						}
+					.then(this.handleSuccess) 
+					.catch(err => console.log(err.message))
+				}
 
 
-					},
-					handleSuccess: function (stream) {
-						this.stream = stream
-						this.recorder = new MediaStreamRecorder(stream)
-						this.recorder.mimeType = "audio/wav"
-						this.recorder.ondataavailable = (blob) => {
-							if (this.audioStream) {
-								this.socket.emit('audio-stream', blob)
-							} else {
-								this.chunks.push(blob)
-							}
-						}
-						this.recorder.onstop = () => {
-							this.socket.emit('audio', this.chunks[0])
-							this.chunks = []
-						}
-						this.recorder.audioChannels = 1
-						this.recorder.start(15000)
+			},
+			handleSuccess: function (stream) {
+				this.stream = stream
+				this.recorder = new MediaStreamRecorder(stream)
+				this.recorder.mimeType = "audio/wav"
+				this.recorder.ondataavailable = (blob) => {
+					if (this.audioStream) {
+						this.socket.emit('audio-stream', blob)
+					} else {
+						this.chunks.push(blob)
 					}
 				}
-			})
-		</script>
-	</body>
+				this.recorder.onstop = () => {
+					this.socket.emit('audio', this.chunks[0])
+					this.chunks = []
+				}
+				this.recorder.audioChannels = 1
+				this.recorder.start(15000)
+			}
+		}
+	})
+</script>
+</body>
