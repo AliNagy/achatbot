@@ -28,8 +28,8 @@
 								<q-card flat bordered style="height:100%" class="q-pa-md scroll">
 									<q-chat-message v-for="msg in messages" :text="msg.text" :sent="msg.sent" />
 									</q-chat-message>
-									<q-spinner-comment class="flip-horizontal" size="4em" color="teal"
-										v-if="awaitReply"></q-spinner-comment>
+									<q-spinner-comment transition-show="scale" class="flip-horizontal" size="4em"
+										color="teal" v-if="awaitReply"></q-spinner-comment>
 								</q-card>
 							</q-card-section>
 							<q-card-section>
@@ -38,7 +38,8 @@
 										class="col-11 col-md-10" outlined v-model="message" label="Your Question!">
 									</q-input>
 									<q-btn :disable="!isConnected || awaitReply" size="lg" round outline
-										:color="recording?'negative':'primary'" icon="mic" @click="toggleMic"></q-btn>
+										:loading="sttLoading" :color="recording?'negative':'primary'" icon="mic"
+										@click="toggleMic"></q-btn>
 								</div>
 							</q-card-section>
 							<q-card-section>
@@ -78,7 +79,8 @@
 					audioStream: false,
 					serverIp: "",
 					chunks: [],
-					awaitReply: false
+					awaitReply: false,
+					sttLoading: false
 				}
 			},
 			computed: {
@@ -118,11 +120,17 @@
 							text: [data],
 							sent: true
 						})
+						this.sttLoading = false
 						this.socket.emit('question', { text: data, textToSpeech: this.textToSpeech })
+						setTimeout(() => {
+							this.awaitReply = true
+						}, 500)
 					})
 				},
 				sendMessage: function () {
-					this.awaitReply = true
+					setTimeout(() => {
+						this.awaitReply = true
+					}, 500)
 					this.socket.emit('question', { text: this.message, textToSpeech: this.textToSpeech })
 					this.messages.push({
 						text: [this.message],
@@ -161,8 +169,8 @@
 						}
 					}
 					this.recorder.onstop = () => {
-						this.awaitReply = true
 						this.socket.emit('audio', this.chunks[0])
+						this.sttLoading = true
 						this.chunks = []
 					}
 					this.recorder.audioChannels = 1
