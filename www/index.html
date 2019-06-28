@@ -1,6 +1,6 @@
 <head>
 	<link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet"
-	type="text/css">
+		type="text/css">
 	<link href="https://cdn.jsdelivr.net/npm/animate.css@^3.5.2/animate.min.css" rel="stylesheet">
 	<link href="https://cdn.jsdelivr.net/npm/quasar@^1.0.0-rc.5/dist/quasar.min.css" rel="stylesheet" type="text/css">
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
@@ -12,13 +12,14 @@
 			<q-header elevated class="bg-primary text-white">
 				<q-toolbar>
 					<q-toolbar-title>
-						Some Really Dumb Bot
+						Bot Mark
 					</q-toolbar-title>
-					<q-input class="q-pr-md" color="black" dense bg-color="white" filled :disable="isConnected" v-model="serverIp" label="Server IP"></q-input>
-					<q-btn flat round dense :icon="isConnected?'power_off':'power'" text-color="white" @click="connectToServer"></q-btn>
+					<q-input class="q-pr-md" color="black" dense bg-color="white" filled :disable="isConnected"
+						v-model="serverIp" label="Server IP"></q-input>
+					<q-btn flat round dense :icon="isConnected?'power_off':'power'" text-color="white"
+						@click="connectToServer"></q-btn>
 				</q-toolbar>
 			</q-header>
-
 			<q-page-container>
 				<q-page class="q-pa-md">
 					<div class="row justify-center">
@@ -26,126 +27,148 @@
 							<q-card-section style="height: 80vh" ref="chatContainer">
 								<q-card flat bordered style="height:100%" class="q-pa-md scroll">
 									<q-chat-message v-for="msg in messages" :text="msg.text" :sent="msg.sent" />
+									</q-chat-message>
+									<q-spinner-comment class="flip-horizontal" size="4em" color="teal"
+										v-if="awaitReply"></q-spinner-comment>
 								</q-card>
 							</q-card-section>
 							<q-card-section>
 								<div class="row justify-around q-gutter-md">
-									<q-input :disable="!isConnected" v-on:keyup.enter="sendMessage" class="col-11 col-md-10" outlined
-									v-model="message" label="Your Question!">
-								</q-input>
-								<q-btn :disable="!isConnected" size="lg" round outline :color="recording?'negative':'primary'" icon="mic"
-								@click="toggleMic"></q-btn>
-							</div>
-						</q-card-section>
-						<q-card-section>
-							<q-toggle checked-icon="volume_up" unchecked-icon="volume_off" v-model="textToSpeech" label="Text-to-Speech"></q-toggle>
-						</q-card-section>
-					</q-card>
-				</div>
-			</q-page>
-		</q-page-container>
+									<q-input :disable="!isConnected || awaitReply" v-on:keyup.enter="sendMessage"
+										class="col-11 col-md-10" outlined v-model="message" label="Your Question!">
+									</q-input>
+									<q-btn :disable="!isConnected || awaitReply" size="lg" round outline
+										:color="recording?'negative':'primary'" icon="mic" @click="toggleMic"></q-btn>
+								</div>
+							</q-card-section>
+							<q-card-section>
+								<q-toggle checked-icon="volume_up" unchecked-icon="volume_off" v-model="textToSpeech"
+									label="Text-to-Speech"></q-toggle>
+							</q-card-section>
+						</q-card>
+					</div>
+				</q-page>
+			</q-page-container>
 
-	</q-layout>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/vue@latest/dist/vue.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/quasar@^1.0.0-rc.5/dist/quasar.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
-<script src="https://cdn.webrtc-experiment.com/MediaStreamRecorder.js"> </script>
-<script>
-</script>
-<script>
-	Vue.component('my-page', {
-		template: '#my-page'
-	})
-	new Vue({
-		el: '#q-app',
-		data: function () {
-			return {
-				socket: null,
-				messages: [
-				],
-				message: "",
-				textToSpeech: false,
-				recorder: false,
-				stream: null,
-				recording: false,
-				audioContext: null,
-				serverIp: ""
-			}
-		},
-		computed: {
-			isConnected: function(){
-				return this.socket?this.socket.connected:false
-			}
-		},
-		methods: {
-			disconnectFromServer: function(){
-				this.socket.close()
-			},
-			connectToServer: function(){
-				if(this.isConnected){
-					this.disconnectFromServer()
-					return;
+		</q-layout>
+	</div>
+	<script src="https://cdn.jsdelivr.net/npm/vue@latest/dist/vue.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/quasar@^1.0.0-rc.5/dist/quasar.umd.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+	<script src="https://cdn.webrtc-experiment.com/MediaStreamRecorder.js"> </script>
+	<script>
+	</script>
+	<script>
+		Vue.component('my-page', {
+			template: '#my-page'
+		})
+		new Vue({
+			el: '#q-app',
+			data: function () {
+				return {
+					socket: null,
+					messages: [
+					],
+					message: "",
+					textToSpeech: false,
+					recorder: false,
+					stream: null,
+					recording: false,
+					audioContext: null,
+					audioStream: false,
+					serverIp: "",
+					chunks: [],
+					awaitReply: false
 				}
-				this.socket = io.connect(this.serverIp)
-				this.socket.on('reply-tts', (data)=>{
-					const audioCxt = new (window.AudioContext || window.webkitAudioContext)()
-					audioCxt.decodeAudioData(data, function(buffer){
-						const source = audioCxt.createBufferSource()
-						source.buffer = buffer
-						source.connect(audioCxt.destination)
-						source.start(0)
-					})
+			},
+			computed: {
+				isConnected: function () {
+					return this.socket ? this.socket.connected : false
+				}
+			},
+			methods: {
+				disconnectFromServer: function () {
+					this.socket.close()
+				},
+				connectToServer: function () {
+					if (this.isConnected) {
+						this.disconnectFromServer()
+						return;
+					}
+					this.socket = io.connect(this.serverIp)
+					this.socket.on('reply-tts', (data) => {
+						const audioCxt = new (window.AudioContext || window.webkitAudioContext)()
+						audioCxt.decodeAudioData(data, function (buffer) {
+							const source = audioCxt.createBufferSource()
+							source.buffer = buffer
+							source.connect(audioCxt.destination)
+							source.start(0)
+						})
 
-				})
-				this.socket.on('reply', (data) => {
-					this.messages.push({
-						text: [data],
-						sent: false
 					})
-				})
-				this.socket.on('speechToText', (data) => {
+					this.socket.on('reply', (data) => {
+						this.awaitReply = false
+						this.messages.push({
+							text: [data],
+							sent: false
+						})
+					})
+					this.socket.on('speechToText', (data) => {
+						this.messages.push({
+							text: [data],
+							sent: true
+						})
+						this.socket.emit('question', { text: data, textToSpeech: this.textToSpeech })
+					})
+				},
+				sendMessage: function () {
+					this.awaitReply = true
+					this.socket.emit('question', { text: this.message, textToSpeech: this.textToSpeech })
 					this.messages.push({
-						text: [data],
+						text: [this.message],
 						sent: true
 					})
-					this.socket.emit('question', {text: data, textToSpeech: this.textToSpeech})
-				})			
-			},
-			sendMessage: function () {
-				this.socket.emit('question', { text: this.message, textToSpeech: this.textToSpeech })
-				this.messages.push({
-					text: [this.message],
-					sent: true
-				})
-				this.message = ""
-			},
-			toggleMic: function () {
-				if (this.recording) {
-					this.recording = false
-					this.socket.emit('audio-stop')
-					this.stream.getAudioTracks()[0].stop()
-					this.recorder.stop()
-				} else {
-					this.recording = true
-					this.socket.emit('audio-start')
-					this.audioContext = new AudioContext
-					navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-					.then(this.handleSuccess) //woops nsyet a3mel save
-					.catch(err => console.log(err.message))
+					this.message = ""
+				},
+				toggleMic: function () {
+					if (this.recording) {
+						this.recording = false
+						if (this.audioStream) {
+							this.socket.emit('audio-stop')
+						}
+						this.stream.getAudioTracks()[0].stop()
+						this.recorder.stop()
+					} else {
+						this.recording = true
+						if (this.audioStream) {
+							this.socket.emit('audio-start')
+						}
+						this.audioContext = new AudioContext
+						navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+							.then(this.handleSuccess) //woops nsyet a3mel save
+							.catch(err => console.log(err.message))
+					}
+				},
+				handleSuccess: function (stream) {
+					this.stream = stream
+					this.recorder = new MediaStreamRecorder(stream)
+					this.recorder.mimeType = "audio/wav"
+					this.recorder.ondataavailable = (blob) => {
+						if (this.audioStream) {
+							this.socket.emit('audio-stream', blob)
+						} else {
+							this.chunks.push(blob)
+						}
+					}
+					this.recorder.onstop = () => {
+						this.awaitReply = true
+						this.socket.emit('audio', this.chunks[0])
+						this.chunks = []
+					}
+					this.recorder.audioChannels = 1
+					this.recorder.start(15000)
 				}
-			},
-			handleSuccess: function (stream) {
-				this.stream = stream
-				this.recorder = new MediaStreamRecorder(stream)
-				this.recorder.mimeType = "audio/wav"
-				this.recorder.ondataavailable = (blob) => {
-					this.socket.emit('audio', blob)
-				}
-				this.recorder.audioChannels = 1
-				this.recorder.start(1000)
 			}
-		}
-	})
-</script>
+		})
+	</script>
 </body>

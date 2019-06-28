@@ -35,7 +35,7 @@ const request = {
 }
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/www/index.html') //???
+    res.sendFile(__dirname + '/www/index.html')
 })
 
 io.on('connection', function (socket) {
@@ -47,26 +47,33 @@ io.on('connection', function (socket) {
         }).then(response => response.text())
             .then((data) => {
                 socket.emit('reply', data)
-                if(textToSpeech){
-                    console.log(data)
+                if (textToSpeech) {
                     fetch('http://localhost:5000/tts', {
                         method: 'POST',
                         body: data
-                    }).then(response => response.arrayBuffer()).then((data)=>{
-                        console.log(data)
+                    }).then(response => response.arrayBuffer()).then((data) => {
                         socket.emit('reply-tts', data)
                     })
                 }
             }).catch(err => console.error(err))
     }
 
+    async function getSTT(data) {
+        const [response] = await client.recognize({
+            audio: { content: data.toString('base64') },
+            config: config
+        })
+        const transcription = response.results
+            .map(result => result.alternatives[0].transcript)
+            .join('\n');
+        socket.emit('speechToText', transcription)
+    }
+
     const recognizeStream = client
         .streamingRecognize(request)
         .on('error', console.error)
         .on('data', (data) => {
-            console.log(data.results[0].alternatives[0].transcript)
             socket.emit('speechToText', data.results[0].alternatives[0].transcript)
-            //getReply(data.results[0].alternatives[0].transcript)
         });
 
     const audioStream = new streamBuffers.ReadableStreamBuffer({
@@ -82,9 +89,12 @@ io.on('connection', function (socket) {
         audioStream.unpipe()
     })
 
-    socket.on('audio', function (data) {
-        console.log("Recieved audio.")
+    socket.on('audio-stream', function (data) {
         audioStream.put(data)
+    })
+
+    socket.on('audio', function (data) {
+        getSTT(data)
     })
 
     socket.on('question', function (data) {
